@@ -1,19 +1,17 @@
-[build]
-target = "riscv32imc-esp-espidf"
-
-[target.'cfg(target_os = "espidf")']
-linker = "ldproxy"
-runner = "espflash flash --monitor"
-rustflags = [ "--cfg",  "espidf_time64"]
-
-[unstable]
-build-std = ["std", "panic_abort"]
+[target.riscv32imc-unknown-none-elf]
+runner = "espflash flash --monitor --chip esp32c3"
 
 [env]
-MCU = "esp32c3"
-ESP_IDF_VERSION = "v5.5.3"
-ESP_IDF_TOOLS_INSTALL_DIR = "workspace"
+ESP_LOG="info"
 
-# Uncomment this if you have moved the target dir by setting CARGO_TARGET_DIR or similar.
-# Required for now due to embuild limitations.
-#CARGO_WORKSPACE_DIR = { value = "", relative = true }
+[build]
+rustflags = [
+  # Required to obtain backtraces (e.g. when using the "esp-backtrace" crate.)
+  # NOTE: May negatively impact performance of produced code
+  "-C", "force-frame-pointers",
+]
+
+target = "riscv32imc-unknown-none-elf"
+
+[unstable]
+build-std = ["alloc", "core"]
