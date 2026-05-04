@@ -22,10 +22,20 @@ esp-rtos = { version = "0.3.0", features = [
 esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c3", "log-04"] }
 log                    = "0.4.27"
 
-critical-section = "1.2.0"
+embassy-net = { version = "0.9.1", features = [
+  "dhcpv4",
+  "log",
+  "medium-ethernet",
+  "tcp",
+  "udp",
+] }
 embedded-io = "0.7.1"
+embedded-io-async = "0.7.0"
 esp-alloc = "0.10.0"
 esp-println = { version = "0.17.0", features = ["esp32c3", "log-04"] }
+# for more networking protocol support see https://crates.io/crates/edge-net
+embassy-executor = { version = "0.10.0", features = ["log"] }
+embassy-time = { version = "0.5.0", features = ["log"] }
 esp-radio = { version = "0.18.0", features = [
   "esp-alloc",
   "esp32c3",
@@ -46,11 +56,9 @@ smoltcp = { version = "0.13.0", default-features = false, features = [
   "socket-tcp",
   "socket-udp",
 ] }
-embassy-executor = "0.10.0"
+critical-section = "1.2.0"
+static_cell      = { version = "2.1.1", features = ["nightly"] }
 embassy-futures = "0.1.2"
-embassy-net = "0.9.1"
-embassy-time = "0.5.1"
-embedded-io-async = "0.7.0"
 
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
