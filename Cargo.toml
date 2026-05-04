@@ -1,17 +1,18 @@
 [package]
 edition      = "2024"
-name         = "my-esp-project"
+name         = "firmware"
 rust-version = "1.88"
 version      = "0.1.0"
 
 [[bin]]
-name = "my-esp-project"
+name = "firmware"
 path = "./src/bin/main.rs"
 
 [dependencies]
 esp-hal = { version = "~1.1.0", features = ["esp32c3", "log-04", "unstable"] }
 
 esp-rtos = { version = "0.3.0", features = [
+  "embassy",
   "esp-alloc",
   "esp-radio",
   "esp32c3",
@@ -45,6 +46,11 @@ smoltcp = { version = "0.13.0", default-features = false, features = [
   "socket-tcp",
   "socket-udp",
 ] }
+embassy-executor = "0.10.0"
+embassy-futures = "0.1.2"
+embassy-net = "0.9.1"
+embassy-time = "0.5.1"
+embedded-io-async = "0.7.0"
 
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
