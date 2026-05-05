@@ -1,5 +1,13 @@
+// use std::{path::PathBuf, env};
+
 fn main() {
     linker_be_nice();
+
+    // 告诉 cargo 当 payload.bin 改变时重新编译
+    println!("cargo:rerun-if-changed=payload.bin");
+
+    // Add custom sections for abi_table partition
+    println!("cargo:rustc-link-arg=-Tcustom-sections.x");
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
     println!("cargo:rustc-link-arg=-Tlinkall.x");
 }

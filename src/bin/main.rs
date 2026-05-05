@@ -14,7 +14,7 @@ use log::{error, info};
 
 use firmware::connection::connection;
 use firmware::net_task::net_task;
-use firmware::sta;
+use firmware::{patch, sta};
 
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
@@ -47,8 +47,9 @@ async fn main(spawner: Spawner) {
     esp_rtos::start(timg0.timer0, sw_interrupt.software_interrupt0);
 
     info!("Embassy initialized!");
-
     let (controller, sta_stack, sta_runner) = sta::init_sta(peripherals.WIFI);
+    info!("Read partition table");
+    patch::load(peripherals.FLASH);
 
     spawner.spawn(connection(controller).unwrap());
     spawner.spawn(net_task(sta_runner).unwrap());

@@ -71,26 +71,26 @@ pub async fn handler(sta_stack: embassy_net::Stack<'static>) {
         TX_META.init([PacketMetadata::EMPTY; 16]),
         TX_BUFFER.init([0; 1536]),
     );
-    
+
     // 绑定到端口 8080
     if let Err(e) = socket.bind(UDP_PORT) {
         info!("Failed to bind UDP socket to port {}: {:?}", UDP_PORT, e);
         return;
     }
     info!("UDP socket bound to port {}", UDP_PORT);
-    
+
     inner(socket).await;
 }
 
 #[inline]
 async fn inner(udp_socket: UdpSocket<'static>) {
     let mut rx_buffer = [0u8; 1536];
-    
+
     loop {
         match udp_socket.recv_from(&mut rx_buffer).await {
             Ok((len, remote_endpoint)) => {
                 info!("Received {} bytes from {}", len, remote_endpoint);
-                
+
                 if len > 0 {
                     // 检查数据是否超过MTU
                     if len > MTU {
@@ -98,22 +98,29 @@ async fn inner(udp_socket: UdpSocket<'static>) {
                         if len >= HEADER_SIZE {
                             let header = &rx_buffer[..HEADER_SIZE];
                             let payload = &rx_buffer[HEADER_SIZE..len];
-                            
+
                             // 发送头部包，包含特殊的QoS值
                             match udp_socket.send_to(header, remote_endpoint).await {
                                 Ok(_) => {
-                                    info!("Sent header ({} bytes) with QoS to {}", HEADER_SIZE, remote_endpoint);
+                                    info!(
+                                        "Sent header ({} bytes) with QoS to {}",
+                                        HEADER_SIZE, remote_endpoint
+                                    );
                                 }
                                 Err(e) => {
                                     info!("Failed to send header: {:?}", e);
                                 }
                             }
-                            
+
                             // 发送载荷包，meta留空（默认值）
                             if payload.len() > 0 {
                                 match udp_socket.send_to(payload, remote_endpoint).await {
                                     Ok(_) => {
-                                        info!("Sent payload ({} bytes) to {}", payload.len(), remote_endpoint);
+                                        info!(
+                                            "Sent payload ({} bytes) to {}",
+                                            payload.len(),
+                                            remote_endpoint
+                                        );
                                     }
                                     Err(e) => {
                                         info!("Failed to send payload: {:?}", e);
@@ -124,7 +131,10 @@ async fn inner(udp_socket: UdpSocket<'static>) {
                             // 数据太小无法拆分，直接转发
                             match udp_socket.send_to(&rx_buffer[..len], remote_endpoint).await {
                                 Ok(_) => {
-                                    info!("Forwarded packet ({} bytes) to {}", len, remote_endpoint);
+                                    info!(
+                                        "Forwarded packet ({} bytes) to {}",
+                                        len, remote_endpoint
+                                    );
                                 }
                                 Err(e) => {
                                     info!("Failed to forward packet: {:?}", e);
