@@ -3,6 +3,9 @@ runner = "espflash flash --monitor --chip esp32c3 --partition-table partitions.c
 
 [env]
 ESP_LOG="info"
+WIFI_SSID="your_wifi_ssid"
+WIFI_PASSWORD="your_wifi_password"
+
 
 [build]
 rustflags = [
