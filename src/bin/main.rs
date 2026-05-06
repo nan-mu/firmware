@@ -12,8 +12,7 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use log::{error, info};
 
-use firmware::connection::connection;
-use firmware::net_task::net_task;
+use firmware::connection::{connection, net_task};
 use firmware::{patch, sta};
 
 #[panic_handler]

@@ -3,6 +3,11 @@ use embassy_time::{Duration, Timer};
 use esp_radio::wifi;
 use log::{error, info};
 
+#[embassy_executor::task(pool_size = 2)]
+pub async fn net_task(mut runner: embassy_net::Runner<'static, wifi::Interface<'static>>) {
+    runner.run().await
+}
+
 #[embassy_executor::task]
 pub async fn connection(mut controller: wifi::WifiController<'static>) -> ! {
     info!("Starting connection task");
