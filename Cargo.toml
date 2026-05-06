@@ -71,5 +71,8 @@ debug         = 2     # prefer slower builds but better debugging experience
 lto           = 'fat'
 opt-level     = 's'
 
+[build-dependencies]
+dotenv-build = "0.1"
+
 [package.metadata.espflash]
 partition_table = "partitions.csv"

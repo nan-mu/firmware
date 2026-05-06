@@ -4,13 +4,8 @@ fn main() {
     // 告诉 cargo 当 payload.bin 改变时重新编译
     println!("cargo:rerun-if-changed=payload.bin");
 
-    // 从 .env 文件读取 WiFi 配置并传递给编译器
-    if let Ok(ssid) = std::env::var("WIFI_SSID") {
-        println!("cargo:rustc-env=WIFI_SSID={}", ssid);
-    }
-    if let Ok(password) = std::env::var("WIFI_PASSWORD") {
-        println!("cargo:rustc-env=WIFI_PASSWORD={}", password);
-    }
+    dotenv_build::output(dotenv_build::Config::default()).unwrap();
+    println!("cargo:rerun-if-changed=.env");
 
     // Add custom sections for abi_table partition
     println!("cargo:rustc-link-arg=-Tcustom-sections.x");

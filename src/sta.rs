@@ -15,7 +15,7 @@ const PASSWORD: &str = env!("WIFI_PASSWORD");
 const IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(10, 0, 1, 4);
 const GATEWAY: Ipv4Addr = Ipv4Addr::new(10, 0, 1, 1);
 const UDP_PORT: u16 = 8080;
-const MTU: usize = 1500;
+// const MTU: usize = 1500;
 const HEADER_SIZE: usize = 32;
 
 static STACK_RESOURCES: StaticCell<StackResources<4>> = StaticCell::new();
@@ -91,61 +91,50 @@ async fn inner(udp_socket: UdpSocket<'static>) {
             Ok((len, remote_endpoint)) => {
                 info!("Received {} bytes from {}", len, remote_endpoint);
 
+                info!("{:?}", remote_endpoint);
+
                 if len > 0 {
-                    // 检查数据是否超过MTU
-                    if len > MTU {
-                        // 超过MTU，需要拆分为头部和载荷两个包
-                        if len >= HEADER_SIZE {
-                            let header = &rx_buffer[..HEADER_SIZE];
-                            let payload = &rx_buffer[HEADER_SIZE..len];
+                    // 拆分为头部和载荷两个包
+                    if len >= HEADER_SIZE {
+                        let header = &rx_buffer[..HEADER_SIZE];
+                        let payload = &rx_buffer[HEADER_SIZE..len];
 
-                            // 发送头部包，包含特殊的QoS值
-                            match udp_socket.send_to(header, remote_endpoint).await {
+                        // 先发送载荷包
+                        if payload.len() > 0 {
+                            match udp_socket.send_to(payload, remote_endpoint).await {
                                 Ok(_) => {
                                     info!(
-                                        "Sent header ({} bytes) with QoS to {}",
-                                        HEADER_SIZE, remote_endpoint
+                                        "Sent payload ({} bytes) to {}",
+                                        payload.len(),
+                                        remote_endpoint
                                     );
                                 }
                                 Err(e) => {
-                                    info!("Failed to send header: {:?}", e);
-                                }
-                            }
-
-                            // 发送载荷包，meta留空（默认值）
-                            if payload.len() > 0 {
-                                match udp_socket.send_to(payload, remote_endpoint).await {
-                                    Ok(_) => {
-                                        info!(
-                                            "Sent payload ({} bytes) to {}",
-                                            payload.len(),
-                                            remote_endpoint
-                                        );
-                                    }
-                                    Err(e) => {
-                                        info!("Failed to send payload: {:?}", e);
-                                    }
-                                }
-                            }
-                        } else {
-                            // 数据太小无法拆分，直接转发
-                            match udp_socket.send_to(&rx_buffer[..len], remote_endpoint).await {
-                                Ok(_) => {
-                                    info!(
-                                        "Forwarded packet ({} bytes) to {}",
-                                        len, remote_endpoint
-                                    );
-                                }
-                                Err(e) => {
-                                    info!("Failed to forward packet: {:?}", e);
+                                    info!("Failed to send payload: {:?}", e);
                                 }
                             }
                         }
+
+                        // 再发送头部包
+                        match udp_socket.send_to(header, remote_endpoint).await {
+                            Ok(_) => {
+                                info!(
+                                    "Sent header ({} bytes) to {}",
+                                    HEADER_SIZE, remote_endpoint
+                                );
+                            }
+                            Err(e) => {
+                                info!("Failed to send header: {:?}", e);
+                            }
+                        }
                     } else {
-                        // 未超过MTU，直接转发整个数据包
+                        // 数据太小无法拆分，直接转发
                         match udp_socket.send_to(&rx_buffer[..len], remote_endpoint).await {
                             Ok(_) => {
-                                info!("Forwarded packet ({} bytes) to {}", len, remote_endpoint);
+                                info!(
+                                    "Forwarded packet ({} bytes) to {}",
+                                    len, remote_endpoint
+                                );
                             }
                             Err(e) => {
                                 info!("Failed to forward packet: {:?}", e);
