@@ -2,18 +2,11 @@
 use core::ptr;
 use esp_hal::peripherals::FLASH;
 use esp_storage::FlashStorage;
-use log::info;
+use log::{debug, info};
 
 #[unsafe(link_section = ".iram1.hotload_area")]
 #[unsafe(no_mangle)]
 static mut XDP: [u8; 4096] = [0u8; 4096];
-
-// 定义 Footer 结构体，用于解析 bin_size 和 bss_size
-// #[repr(C, packed)]
-// struct AotFooter {
-//     bin_size: u16,
-//     bss_size: u16,
-// }
 
 pub fn load(flash: FLASH<'static>) {
     let mut flash = FlashStorage::new(flash);
@@ -48,18 +41,31 @@ pub fn load(flash: FLASH<'static>) {
         // 在 bin 结束后的位置开始，清空 bss_size 长度的内存
         ptr::write_bytes(xdp_ptr.add(bin_size), 0, bss_size);
 
-        info!("[AOT] 加载完成，准备跳转至 0x{:p}", xdp_ptr);
+        info!("[AOT] 加载完成");
+    }
+}
 
-        // 4. 刷新指令流水线 (RISC-V 核心必需)
-        // 在某些 Rust ESP HAL 中可以使用核心指令，或者简单的内联汇编
+#[repr(C)]
+pub struct XdpContext {
+    data: *const u8,
+    data_end: *const u8,
+}
+
+pub fn xdp(data: &[u8]) -> i32 {
+    let xdp_ptr = ptr::addr_of_mut!(XDP) as *mut u8;
+    unsafe {
         core::arch::asm!("fence.i");
-
-        // 5. 跳转执行
-        // 定义入口函数类型，返回 i32
-        let entry: extern "C" fn() -> i32 = core::mem::transmute(xdp_ptr);
-
-        // 调用 AOT 程序
-        let res: i32 = entry();
-        info!("[AOT] 程序返回值: {}", res);
+        
+        let entry: extern "C" fn(*const XdpContext) -> i32 = 
+            core::mem::transmute(xdp_ptr);
+        
+        let ctx = XdpContext {
+            data: data.as_ptr(),
+            data_end: data.as_ptr().add(data.len()),
+        };
+        
+        let res = entry(&ctx as *const _);
+        debug!("[AOT] 程序返回值: {}", res);
+        res
     }
 }
