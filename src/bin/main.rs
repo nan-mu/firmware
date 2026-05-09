@@ -12,7 +12,7 @@ use esp_hal::clock::CpuClock;
 use esp_hal::timer::timg::TimerGroup;
 use log::{error, info};
 
-use firmware::connection::{connection, net_task};
+use firmware::connection::{connection, net_task_xdp};
 use firmware::{patch, sta};
 
 #[panic_handler]
@@ -51,7 +51,7 @@ async fn main(spawner: Spawner) {
     patch::load(peripherals.FLASH);
 
     spawner.spawn(connection(controller).unwrap());
-    spawner.spawn(net_task(sta_runner).unwrap());
+    spawner.spawn(net_task_xdp(sta_runner).unwrap());
 
     sta::handler(sta_stack).await;
 

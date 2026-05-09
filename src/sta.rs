@@ -9,6 +9,7 @@ use esp_hal::{peripherals::WIFI, rng::Rng};
 use esp_radio::wifi::{self, Config, ControllerConfig, sta::StationConfig};
 use log::info;
 use static_cell::StaticCell;
+use crate::driver::FirewallDevice;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASSWORD");
@@ -30,7 +31,7 @@ pub fn init_sta(
 ) -> (
     wifi::WifiController<'static>,
     embassy_net::Stack<'static>,
-    embassy_net::Runner<'static, wifi::Interface<'static>>,
+    embassy_net::Runner<'static, FirewallDevice<wifi::Interface<'static>>>,
 ) {
     info!("STA Initialization");
     let sta = Config::Station(
@@ -44,6 +45,11 @@ pub fn init_sta(
         wifi::new(wifi, ControllerConfig::default().with_initial_config(sta)).unwrap();
 
     let sta = interfaces.station;
+    
+    // 包装 WiFi interface 为 XDP 防火墙设备
+    info!("Wrapping WiFi interface with XDP firewall");
+    let xdp_device = FirewallDevice::new(sta);
+    
     let sta_config = embassy_net::Config::ipv4_static(StaticConfigV4 {
         address: Ipv4Cidr::new(IP_ADDRESS, 24),
         gateway: Some(GATEWAY),
@@ -57,7 +63,7 @@ pub fn init_sta(
 
     info!("STA starting with seed: {}", seed);
     let resources = STACK_RESOURCES.init(StackResources::<4>::new());
-    let (sta_stack, sta_runner) = embassy_net::new(sta, sta_config, resources, seed);
+    let (sta_stack, sta_runner) = embassy_net::new(xdp_device, sta_config, resources, seed);
 
     (controller, sta_stack, sta_runner)
 }
