@@ -1,4 +1,5 @@
 use embassy_net::driver::{Driver, RxToken};
+use log::info;
 use crate::patch;
 
 pub struct FirewallDevice<D: Driver> {
@@ -12,9 +13,10 @@ impl<D: Driver> FirewallDevice<D> {
     
     fn check_packet(&self, data: &[u8]) -> bool {
         let result = patch::xdp(data);
-        // 根据你的 XDP 程序返回值决定是否接受数据包
-        // 当前返回 42，你可以定义自己的协议
-        result == 42  // 或者 result != 0 表示接受
+        
+        let pass = result == 2 || result == 3 || result == 4;
+        
+        pass
     }
 }
 

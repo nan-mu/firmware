@@ -13,7 +13,7 @@ use crate::driver::FirewallDevice;
 
 const SSID: &str = env!("WIFI_SSID");
 const PASSWORD: &str = env!("WIFI_PASSWORD");
-const IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(10, 0, 1, 4);
+const IP_ADDRESS: Ipv4Addr = Ipv4Addr::new(10, 0, 1, 64);
 const GATEWAY: Ipv4Addr = Ipv4Addr::new(10, 0, 1, 1);
 const UDP_PORT: u16 = 8080;
 // const MTU: usize = 1500;

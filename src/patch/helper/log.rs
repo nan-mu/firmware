@@ -30,9 +30,11 @@ pub(super) enum Token<'a> {
     Spec(SpecType),
 }
 
-// 1. 尝试匹配 %d 等。成功会消耗 2 字节。
+// 1. 尝试匹配 %d 等。成功会消耗相应字节。
 fn parse_spec_type(input: &[u8]) -> IResult<&[u8], SpecType> {
     alt((
+        // %pI4 - IPv4 地址格式 (4 字节)
+        value(SpecType::Dot, tag(b"%pI4" as &[u8])),
         value(
             SpecType::Signed,
             alt((tag(b"%d" as &[u8]), tag(b"%i" as &[u8]))),
@@ -44,7 +46,6 @@ fn parse_spec_type(input: &[u8]) -> IResult<&[u8], SpecType> {
             alt((tag(b"%x" as &[u8]), tag(b"%X" as &[u8]))),
         ),
         value(SpecType::Octal, tag(b"%o" as &[u8])),
-        value(SpecType::Dot, tag(b"%." as &[u8])),
     ))
     .parse(input)
 }
@@ -114,15 +115,49 @@ pub fn zip_format(tokens: Vec<Token, 16>, args: &[usize]) -> String<256> {
                 }
             }
             ).is_err() {
-                error!("[helper]bpf_printk: buffer full, skill text.");
+                error!("[helper]bpf_printk: buffer full, skip text.");
                 info!("Consider modifying the configuration file settings regarding the cache area.")
             },
-            Token::Spec(s) => match s {
-                SpecType::Signed => if write!(buf, "{}", arg.next().unwrap()).is_err() {
-                    error!("[helper]bpf_printk: buffer full, skill value.");
-                    info!("Consider modifying the configuration file settings regarding the cache area.")
+            Token::Spec(spec_type) => {
+                if let Some(&val) = arg.next() {
+                    let result = match spec_type {
+                        SpecType::Signed => write!(buf, "{}", val as isize),
+                        SpecType::Unsigned => write!(buf, "{}", val),
+                        SpecType::Hex => write!(buf, "{:#x}", val),
+                        SpecType::Octal => write!(buf, "{:#o}", val),
+                        SpecType::String => {
+                            // val 是字符串指针
+                            unsafe {
+                                // 假设最大字符串长度 128
+                                let ptr = val as *const u8;
+                                let mut len = 0;
+                                while len < 128 && ptr.add(len).read() != 0 {
+                                    len += 1;
+                                }
+                                let slice = core::slice::from_raw_parts(ptr, len);
+                                match core::str::from_utf8(slice) {
+                                    Ok(s) => write!(buf, "{}", s),
+                                    Err(_) => write!(buf, "<invalid utf8>"),
+                                }
+                            }
+                        },
+                        SpecType::Dot => {
+                            // %pI4 - IPv4 地址 (val 是指向 4 字节的指针)
+                            unsafe {
+                                let ptr = val as *const u8;
+                                let ip = [ptr.read(), ptr.add(1).read(), ptr.add(2).read(), ptr.add(3).read()];
+                                write!(buf, "{}.{}.{}.{}", ip[0], ip[1], ip[2], ip[3])
+                            }
+                        },
+                    };
+                    
+                    if result.is_err() {
+                        error!("[helper]bpf_printk: buffer full, skip value.");
+                        info!("Consider modifying the configuration file settings regarding the cache area.")
+                    }
+                } else {
+                    error!("[helper]bpf_printk: not enough arguments for format specifier");
                 }
-                _ => panic!()
             }
         }
     }
