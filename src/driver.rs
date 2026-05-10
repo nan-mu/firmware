@@ -1,6 +1,6 @@
+use crate::patch;
 use embassy_net::driver::{Driver, RxToken};
 use log::info;
-use crate::patch;
 
 pub struct FirewallDevice<D: Driver> {
     inner: D,
@@ -10,24 +10,39 @@ impl<D: Driver> FirewallDevice<D> {
     pub fn new(device: D) -> Self {
         Self { inner: device }
     }
-    
+
     fn check_packet(&self, data: &[u8]) -> bool {
         let result = patch::xdp(data);
-        
+        info!("[Driver] ctx size: {}", data.len());
         let pass = result == 2 || result == 3 || result == 4;
-        
+
         pass
     }
 }
 
 impl<D: Driver> Driver for FirewallDevice<D> {
-    type RxToken<'a> = FirewallRxToken<D::RxToken<'a>, D> where Self: 'a;
-    type TxToken<'a> = D::TxToken<'a> where Self: 'a;
+    type RxToken<'a>
+        = FirewallRxToken<D::RxToken<'a>, D>
+    where
+        Self: 'a;
+    type TxToken<'a>
+        = D::TxToken<'a>
+    where
+        Self: 'a;
 
-    fn receive(&mut self, cx: &mut core::task::Context) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
+    fn receive(
+        &mut self,
+        cx: &mut core::task::Context,
+    ) -> Option<(Self::RxToken<'_>, Self::TxToken<'_>)> {
         let firewall_ptr = self as *const _;
         self.inner.receive(cx).map(|(rx, tx)| {
-            (FirewallRxToken { inner: rx, firewall: firewall_ptr }, tx)
+            (
+                FirewallRxToken {
+                    inner: rx,
+                    firewall: firewall_ptr,
+                },
+                tx,
+            )
         })
     }
 

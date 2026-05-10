@@ -43,7 +43,11 @@ fn parse_spec_type(input: &[u8]) -> IResult<&[u8], SpecType> {
         value(SpecType::String, tag(b"%s" as &[u8])),
         value(
             SpecType::Hex,
-            alt((tag(b"%x" as &[u8]), tag(b"%X" as &[u8]))),
+            alt((
+                tag(b"%x" as &[u8]),
+                tag(b"%X" as &[u8]),
+                tag(b"%p" as &[u8]),
+            )),
         ),
         value(SpecType::Octal, tag(b"%o" as &[u8])),
     ))
@@ -150,7 +154,6 @@ pub fn zip_format(tokens: Vec<Token, 16>, args: &[usize]) -> String<256> {
                             }
                         },
                     };
-                    
                     if result.is_err() {
                         error!("[helper]bpf_printk: buffer full, skip value.");
                         info!("Consider modifying the configuration file settings regarding the cache area.")

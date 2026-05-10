@@ -51,10 +51,10 @@ async fn main(spawner: Spawner) {
     patch::load(peripherals.FLASH);
 
     // 测试是否能正常读取上下文：
-    info!("Testing XDP...");
-    let data = b"Hello, XDP!";
-    let res = patch::xdp(data);
-    info!("XDP result: {}", res);
+    // info!("Testing XDP...");
+    // let data = b"Hello, XDP!";
+    // let res = patch::xdp(data);
+    // info!("XDP result: {}", res);
 
     spawner.spawn(connection(controller).unwrap());
     spawner.spawn(net_task_xdp(sta_runner).unwrap());

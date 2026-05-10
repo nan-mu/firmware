@@ -1,22 +1,22 @@
 // use embedded_storage::Storage;
 use core::ptr;
 use esp_hal::peripherals::FLASH;
-use esp_storage::FlashStorage;
-use log::{debug, info};
+// use esp_storage::FlashStorage;
+use log::info;
 
 #[unsafe(link_section = ".iram1.hotload_area")]
 #[unsafe(no_mangle)]
 static mut XDP: [u8; 4096] = [0u8; 4096];
 
-pub fn load(flash: FLASH<'static>) {
-    let mut flash = FlashStorage::new(flash);
-    let mut buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
-    let pt =
-        esp_bootloader_esp_idf::partitions::read_partition_table(&mut flash, &mut buffer).unwrap();
-    // List all partitions - this is just FYI
-    for part in pt.iter() {
-        info!("{:?}", part);
-    }
+pub fn load(_flash: FLASH<'static>) {
+    // let mut flash = FlashStorage::new(flash);
+    // let mut buffer = [0u8; esp_bootloader_esp_idf::partitions::PARTITION_TABLE_MAX_LEN];
+    // let pt =
+    //     esp_bootloader_esp_idf::partitions::read_partition_table(&mut flash, &mut buffer).unwrap();
+    // // List all partitions - this is just FYI
+    // for part in pt.iter() {
+    //     info!("{:?}", part);
+    // }
 
     let xdp_with_footer = include_bytes!("/Users/nan/bs/firmware/payload.bin");
 
@@ -53,19 +53,35 @@ pub struct XdpContext {
 
 pub fn xdp(data: &[u8]) -> i32 {
     let xdp_ptr = ptr::addr_of_mut!(XDP) as *mut u8;
+
     unsafe {
         core::arch::asm!("fence.i");
-        
-        let entry: extern "C" fn(*const XdpContext) -> i32 = 
-            core::mem::transmute(xdp_ptr);
-        
-        let ctx = XdpContext {
+
+        // 在栈上创建 ctx
+        let mut ctx = XdpContext {
             data: data.as_ptr(),
             data_end: data.as_ptr().add(data.len()),
         };
-        
-        let res = entry(&ctx as *const _);
-        debug!("[AOT] 程序返回值: {}", res);
+
+        let ctx_ptr = &mut ctx as *mut XdpContext;
+
+        info!(
+            "[AOT] 调用 XDP，ctx_ptr={:p}, data={:p}, data_end={:p}",
+            ctx_ptr, ctx.data, ctx.data_end
+        );
+
+        // 使用内联汇编调用，确保寄存器正确
+        let res: i32;
+        core::arch::asm!(
+            "jalr {entry}",
+            entry = in(reg) xdp_ptr,
+            in("a0") ctx_ptr,
+            lateout("a0") res,
+            // 标记所有可能被破坏的寄存器
+            clobber_abi("C"),
+        );
+
+        info!("[AOT] XDP返回: {}", res);
         res
     }
 }
