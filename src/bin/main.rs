@@ -50,15 +50,16 @@ async fn main(spawner: Spawner) {
     info!("Read partition table");
     patch::load(peripherals.FLASH);
 
+    // 测试是否能正常读取上下文：
+    info!("Testing XDP...");
+    let data = b"Hello, XDP!";
+    let res = patch::xdp(data);
+    info!("XDP result: {}", res);
+
     spawner.spawn(connection(controller).unwrap());
     spawner.spawn(net_task_xdp(sta_runner).unwrap());
 
     sta::handler(sta_stack).await;
-
-    // 测试是否能正常读取上下文：
-    let data = b"Hello, XDP!";
-    let res = patch::xdp(data);
-    info!("XDP result: {}", res);
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
 }

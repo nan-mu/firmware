@@ -1,7 +1,7 @@
 SECTIONS
 {
-    /* 将 helper_jump 放在 IRAM 中间偏后的位置 */
-    .iram1.helper_jump 0x403A0000 : 
+    /* 将 helper_dispatcher 放在 IRAM 中间偏后的位置 */
+    .iram1.helper_dispatcher 0x403A0000 : 
     {
         . = ALIGN(4);
         KEEP(*(.iram1.helper_dispatcher))
